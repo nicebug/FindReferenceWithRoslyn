@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 
 
-namespace FindReferenceWithRoslyn
+namespace FindReference
 {
     class Program
     {
@@ -29,8 +29,8 @@ namespace FindReferenceWithRoslyn
             //var fullClassName = args[2];
             //var methodName = args[3];
             var pathtosolution = @"E:\DevWork\Project\CSharpParser\CSharpParserWithRoslyn\CSharpParserWithRoslyn.sln";
-            var projectname = @"FindRef";
-            var fullClassName = @"FindRef.Program";
+            var projectname = @"FindRef1";
+            var fullClassName = @"CSharpParse.FindRef.Program";
             var methodName = @"FindAllReferencesWithSolution";
 
             FindAllReferences(pathtosolution, projectname, fullClassName, methodName);
@@ -40,11 +40,27 @@ namespace FindReferenceWithRoslyn
         {
             MSBuildWorkspace workspace = MSBuildWorkspace.Create();
             Solution solution = workspace.OpenSolutionAsync(pathtosolution).Result;
+            if (solution == null)
+            {
+                Console.WriteLine("no solution: " + pathtosolution);
+                return;
+            }
+
             Project project = solution.Projects.Where(proj => proj.Name == projectname).FirstOrDefault();
+            if (project == null)
+            {
+                Console.WriteLine("no project: " + projectname);
+                return;
+            }
 
             // 以下都是为了IMethodSymbol，便于使用SymbolFinder.FindReferencesAsync
             Compilation compilation = project.GetCompilationAsync().Result;
             INamedTypeSymbol classToAnalyze = compilation.GetTypeByMetadataName(fullClassName);
+            if ( classToAnalyze == null)
+            {
+                Console.WriteLine("no fullclass name : " + fullClassName);
+                return;
+            }
             IMethodSymbol methodSymbol = classToAnalyze.GetMembers(methodName).FirstOrDefault() as IMethodSymbol;
             if (methodSymbol == null)
             {
@@ -63,7 +79,7 @@ namespace FindReferenceWithRoslyn
 
         private static void PrintUsage()
         {
-            Console.WriteLine(@"Usage: FindReferenceWithRoslyn " +  @"pathtosolution " + @"projectname " + @"FullClassName " + @"MethodName");
+            Console.WriteLine(@"Usage: FindReference " +  @"pathtosolution " + @"projectname " + @"FullClassName " + @"MethodName");
         }
     }
 }
