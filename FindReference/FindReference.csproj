@@ -7,8 +7,8 @@
     <ProjectGuid>{248253BF-046D-4456-9F1C-EB003BE5563E}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>FindReferenceWithRoslyn</RootNamespace>
-    <AssemblyName>FindReferenceWithRoslyn</AssemblyName>
+    <RootNamespace>FindReference</RootNamespace>
+    <AssemblyName>FindReference</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
