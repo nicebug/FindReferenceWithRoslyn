@@ -4,6 +4,12 @@ import sys
 change_filename = {}
 
 
+class ParserJsonGetMethodName(object):
+    """解析JSON文件,获取变更函数名"""
+    def __init__(self, filename):
+        self.filename = filename
+
+
 def main():
     filename = r"E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\1.txt"
     with open(filename, 'r') as f:

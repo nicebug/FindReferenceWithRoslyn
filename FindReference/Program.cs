@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Threading.Tasks;
 
 using Microsoft.CodeAnalysis;
@@ -11,6 +12,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
 
+using FindReference.Common;
 
 namespace FindReference
 {
@@ -39,6 +41,9 @@ namespace FindReference
             // 测试获取函数行数
             MethodAndLine line = new MethodAndLine();
             line.GetMethodInfoFromSolution(pathtosolution);
+
+            File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
+            
             //Console.WriteLine(sb);
 
             //FindAllReferences(pathtosolution, projectname, fullClassName, methodName);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO;
 
@@ -25,7 +26,7 @@ namespace FindReference
 
         public void  GetMethodInfoFromSolution(string pathToSoluton)
         {
-            string folder = "./method.txt";
+            string folder = "./tmp.txt";
             //StringBuilder result = new StringBuilder();
             List<string> result = new List<string>();
             List<object> info = new List<object>();
@@ -45,12 +46,13 @@ namespace FindReference
                 {
                     if (language == "C#")
                     {
-                        var infolist = GetMethodInfoListFromDocument(document);
-                        if (infolist != null && infolist.Count > 0)
+                        //var infolist = GetMethodInfoListFromDocument(document);
+                        var infolist = GetMethodInfoFromDocument(document);
+                        if (infolist != null && infolist != ""/*infolist.Count > 0*/)
                         {
-                            info.Add(infolist);
+                            //info.Add(infolist);
+                            result.Add(infolist);
                         }
-                        //result.Add(GetMethodInfoFromDocument(document));
                     }
                 });
             }
@@ -59,14 +61,14 @@ namespace FindReference
             {
                 File.Delete(folder);
             }
-            result.Add(info.ToJSON());
+            //result.Add(info.ToJSON());
             File.AppendAllLines(folder, result, Encoding.UTF8);
         }
 
         private string GetMethodInfoFromDocument(Document document)
         {
             StringBuilder sb = new StringBuilder();
-            //sb.AppendLine(document.Name);
+            sb.AppendLine(document.Name);
             //sb.AppendLine(document.FilePath);
             List<MethodInfo> info = new List<MethodInfo>();
             var root = (CompilationUnitSyntax)document.GetSyntaxRootAsync().Result;
@@ -77,23 +79,22 @@ namespace FindReference
             {
                 foreach (MethodDeclarationSyntax method in syntaxNodes)
                 {
-                    info.Add(new MethodInfo
-                    {
-                        DocName = document.Name,
-                        FilePath = document.FilePath,
-                        //MethodNameAndList = new Method(method.Identifier.ToString(), method.GetLocation().GetLineSpan().Span.ToString())
-                        MethodName = method.Identifier.ToString(),
-                        LineNum = method.GetLocation().GetLineSpan().Span.ToString()
-                    });
+                    //info.Add(new MethodInfo
+                    //{
+                    //    DocName = document.Name,
+                    //    FilePath = document.FilePath,
+                    //    //MethodNameAndList = new Method(method.Identifier.ToString(), method.GetLocation().GetLineSpan().Span.ToString())
+                    //    MethodName = method.Identifier.ToString(),
+                    //    LineNum = method.GetLocation().GetLineSpan().Span.ToString()
+                    //});
                     //sb.AppendLine("//==========================");
-                    //sb.AppendLine(method.Identifier.Value.ToString() + "," + method.GetLocation().GetLineSpan().Span.ToString());
-                    //sb.AppendLine(method.GetLocation().GetLineSpan().Span.ToString());
+                    sb.AppendLine(method.Identifier.Value.ToString().Trim() + "\t" + method.GetLocation().GetLineSpan().Span.ToString().Trim());
                     //sb.AppendLine(method.GetLocation().GetLineSpan().Span.ToString());
                 }
             }
-            string result = info.ToJSON();
-            //return sb.ToString();
-            return result;
+            //string result = info.ToJSON();
+            return sb.ToString();
+            //return result;
         }
 
         private List<MethodInfo> GetMethodInfoListFromDocument(Document document)
@@ -120,5 +121,33 @@ namespace FindReference
             }
             return info;
         }
+
+        #region 解析文件生成函数开始行，结束行信息
+        public string  HandleMethodInfoFromFile(string filepath)
+        {
+            if (!File.Exists(filepath))
+            {
+                return @"tmp.txt not found";
+            }
+
+            StringBuilder sb = new StringBuilder();
+            var lines = File.ReadAllLines(filepath);
+            foreach (var line in lines)
+            {
+                var result = line.Split();
+                if (result.Length >= 2)
+                {
+                    var split = new char[]{ '(', ')', '-', ','};
+                    var numinfo = result[1].Split(split);
+                    sb.AppendLine(result[0] + "," + numinfo[1] + "," + numinfo[5]);
+                }
+                else
+                {
+                    sb.AppendLine(result[0]);
+                }
+            }
+            return sb.ToString();
+        }
+        #endregion
     }
 }
