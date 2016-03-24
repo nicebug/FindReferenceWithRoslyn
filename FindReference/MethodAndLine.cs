@@ -68,7 +68,7 @@ namespace FindReference
         private string GetMethodInfoFromDocument(Document document)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(document.Name);
+            //sb.AppendLine(document.FilePath.ToString().Trim());
             //sb.AppendLine(document.FilePath);
             List<MethodInfo> info = new List<MethodInfo>();
             var root = (CompilationUnitSyntax)document.GetSyntaxRootAsync().Result;
@@ -88,12 +88,13 @@ namespace FindReference
                     //    LineNum = method.GetLocation().GetLineSpan().Span.ToString()
                     //});
                     //sb.AppendLine("//==========================");
-                    sb.AppendLine(method.Identifier.Value.ToString().Trim() + "\t" + method.GetLocation().GetLineSpan().Span.ToString().Trim());
+                    sb.AppendLine(method.Identifier.Value.ToString().Trim() + "," + method.GetLocation().GetLineSpan().Span.ToString().Trim() + "," + document.FilePath);
                     //sb.AppendLine(method.GetLocation().GetLineSpan().Span.ToString());
                 }
             }
             //string result = info.ToJSON();
-            return sb.ToString();
+
+            return Regex.Replace(sb.ToString(), @" ", "");
             //return result;
         }
 
@@ -134,12 +135,14 @@ namespace FindReference
             var lines = File.ReadAllLines(filepath);
             foreach (var line in lines)
             {
-                var result = line.Split();
-                if (result.Length >= 2)
+                var split = new char[] { '(', ')', '-', ',' };
+                var result = line.Split(split);
+
+                if (result.Length >= 10)
                 {
-                    var split = new char[]{ '(', ')', '-', ','};
-                    var numinfo = result[1].Split(split);
-                    sb.AppendLine(result[0] + "," + numinfo[1] + "," + numinfo[5]);
+                    //var split = new char[]{ '(', ')', '-', ','};
+                    //var numinfo = result[1].Split(split);
+                    sb.AppendLine(result[0] + "," + result[2] + "," + result[6] + "," + result[9]);
                 }
                 else
                 {

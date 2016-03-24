@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -30,22 +31,78 @@ namespace FindReference
             //var projectname = args[1];
             //var fullClassName = args[2];
             //var methodName = args[3];
-
-            //var pathtosolution = @"E:\DevWork\Project\CSharpParser\CSharpParserWithRoslyn\CSharpParserWithRoslyn.sln";
-            var pathtosolution = @"..\..\..\FindReferenceWithRoslyn.sln";
+            Stopwatch st = new Stopwatch();
+            st.Start();
+            var pathtosolution = @"E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\UnityVS.UnityProj.sln";
+            //var pathtosolution = @"..\..\..\FindReferenceWithRoslyn.sln";
             var projectname = @"FindRef";
             var fullClassName = @"CSharpParse.FindRef.Program";
             //var methodName = @"FindAllReferencesWithSolution";
             var methodName = @"FindAllReferences";
 
-            // 测试获取函数行数
-            MethodAndLine line = new MethodAndLine();
-            line.GetMethodInfoFromSolution(pathtosolution);
+            // step1 获取函数行数
+            //MethodAndLine line = new MethodAndLine();
+            //line.GetMethodInfoFromSolution(pathtosolution);
+            //if (File.Exists(Constant.MethodInfoTxt))
+            //{
+            //    File.Delete(Constant.MethodInfoTxt);
+            //}
+            //File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
+            // step2 变更行查函数名
+            var lines = File.ReadAllLines(Constant.MethodInfoTxt);
+            var functionlist = new Dictionary<string, string>();
 
-            File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
+            /** 这个没用了，直接c#解析svndiff文件
+            //var funcstr = File.ReadAllText(@"./func.json");
+            //var serializer = new JavaScriptSerializer();
+            //var changelist = serializer.Deserialize<Dictionary<string, List<int>>>(funcstr);
+            */
+
+            var changelist = HandleSvnDiffFile(Constant.SvnDiffTxt);
+            foreach (var change in changelist)
+            {
+                foreach (var line in lines)
+                {
+                    var key = change.Key.Replace(@"/", @"\");
+                    if (line.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        // 找到对应的变更脚本
+                        foreach (var num in change.Value)
+                        {
+                            var info = line.Split(',');
+                            var start = Int32.Parse(info[1]) + 1;
+                            var end = Int32.Parse(info[2]) + 1;
+                            var filepath = info[3];
+                            //var num1 = Int32.Parse(num);
+                            var num1 = num;
+                            if (start <= num1 && num1 <= end)
+                            {
+                                //Console.WriteLine(line);
+                                if (functionlist.ContainsValue(info[0]) && functionlist.ContainsValue(key))
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    functionlist[info[0]] = key;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // step3: 变更函数查相关引用
+            foreach (var function in functionlist.Keys)
+            {
+                Console.WriteLine("变更的函数名：" + function);
+                //Console.WriteLine( SearchMethodsForTextParallel(pathtosolution, function));
+            }
             
-            //Console.WriteLine(sb);
+            
+            
 
+            ///////////////////////////////////////////
             //FindAllReferences(pathtosolution, projectname, fullClassName, methodName);
 
             // 测试引用的函数
@@ -53,8 +110,11 @@ namespace FindReference
             string sb = SearchMethodsForTextParallel(pathtosolution, methodName);
             Console.WriteLine(sb);
             */
+            st.Stop();
+            Console.WriteLine("Total time:" + st.ElapsedMilliseconds);
         }
 
+        #region 查找函数引用
         private static void FindAllReferences(string pathtosolution, string projectname, string fullClassName, string methodName)
         {
             MSBuildWorkspace workspace = MSBuildWorkspace.Create();
@@ -97,6 +157,7 @@ namespace FindReference
                 
             }
         }
+        #endregion
 
         private static void PrintUsage()
         {
@@ -160,9 +221,42 @@ namespace FindReference
             sb.AppendLine("//=================================" + num);
             sb.AppendLine(document.FilePath);
             sb.AppendLine(methodOrPropertyDefinition + (string)methodName);
-            sb.AppendLine(methodText);
+            //sb.AppendLine(methodText);
 
             return sb.ToString();
+        }
+
+        private static Dictionary<string, List<int>> HandleSvnDiffFile(string filename)
+        {
+            Dictionary<string, List<int>> result = new Dictionary<string, List<int>>();
+            var lines = File.ReadAllLines(filename);
+            string key = null;
+            foreach (var line in lines)
+            {
+                // +++ Assets/Scripts/ssGameWorld.cs (revision 190380)这种文件格式的处理
+                if (!line.StartsWith(@"+++") && !line.StartsWith(@"@@"))
+                {
+                    continue;
+                }
+                else
+                {
+                    if (line.StartsWith(@"+++"))
+                    {
+                        key = line.Split()[1].Trim();
+                        if (!result.ContainsKey(key))
+                        {
+                            result[key] = new List<int>();
+                        }
+                    }
+                    //# @@ -1034,7 +1030,6 @@ 这种格式的处理
+                    else if (line.StartsWith(@"@@"))
+                    {
+                        var linenum = line.Split()[2].Split(',')[0].Split('+')[1].Trim();
+                        result[key].Add(int.Parse(linenum));
+                    }
+                }
+            }
+            return result;
         }
     }
 }
