@@ -35,7 +35,7 @@ namespace FindReference
             //Stopwatch st = new Stopwatch();
             //st.Start();
             /**
-            var pathtosolution = @"E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\UnityVS.UnityProj.sln";
+            var pathtosolution = @"xxx\UnityVS.UnityProj.sln";
             //var pathtosolution = @"..\..\..\FindReferenceWithRoslyn.sln";
             var projectname = @"FindRef";
             var fullClassName = @"CSharpParse.FindRef.Program";
