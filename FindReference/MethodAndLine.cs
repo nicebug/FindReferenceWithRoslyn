@@ -124,6 +124,11 @@ namespace FindReference
         }
 
         #region 解析文件生成函数开始行，结束行信息
+        // Awake,(23,1)-(43,2),E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\Assets\Plugins\BuglyInit.cs
+        // ||
+        // \/
+        // Awake,23,43,E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\Assets\Plugins\BuglyInit.cs
+        // 如上的处理，只需要函数， 开始行，结束行，文件路径
         public string  HandleMethodInfoFromFile(string filepath)
         {
             if (!File.Exists(filepath))
@@ -131,6 +136,7 @@ namespace FindReference
                 return @"tmp.txt not found";
             }
 
+            
             StringBuilder sb = new StringBuilder();
             var lines = File.ReadAllLines(filepath);
             foreach (var line in lines)

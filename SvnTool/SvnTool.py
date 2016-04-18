@@ -19,12 +19,12 @@ def main():
                 # +++ Assets/Scripts/ssGameWorld.cs (revision 190380)这种文件格式的处理
                 key = line.split()[1].strip()
                 if key not in change_filename:
-                    change_filename[key] = []
+                    change_filename[str(key)] = []
             elif line.startswith('@@'):
                 # 获得diff文件中变化的行数
                 # @@ -1034,7 +1030,6 @@ 这种格式的处理
                 num = line.split()[2].split(',')[0].split('+')[1].strip()
-                change_filename[key].append(num)
+                change_filename[key].append(int(num))
 
         print change_filename
 

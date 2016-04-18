@@ -21,44 +21,68 @@ namespace FindReference
     {
         static void Main(string[] args)
         {
-            //if (args.Length == 0)
-            //{
-            //    PrintUsage();
-            //    return;
-            //}
+            if (args.Length == 0)
+            {
+                PrintUsage();
+                return;
+            }
 
-            //var pathtosolution = args[0];
+            var pathtosolution = args[0];
             //var projectname = args[1];
             //var fullClassName = args[2];
             //var methodName = args[3];
-            Stopwatch st = new Stopwatch();
-            st.Start();
+
+            //Stopwatch st = new Stopwatch();
+            //st.Start();
+            /**
             var pathtosolution = @"E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\UnityVS.UnityProj.sln";
             //var pathtosolution = @"..\..\..\FindReferenceWithRoslyn.sln";
             var projectname = @"FindRef";
             var fullClassName = @"CSharpParse.FindRef.Program";
             //var methodName = @"FindAllReferencesWithSolution";
             var methodName = @"FindAllReferences";
-
-            // step1 获取函数行数
-            //MethodAndLine line = new MethodAndLine();
-            //line.GetMethodInfoFromSolution(pathtosolution);
-            //if (File.Exists(Constant.MethodInfoTxt))
-            //{
-            //    File.Delete(Constant.MethodInfoTxt);
-            //}
-            //File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
-            // step2 变更行查函数名
-            var lines = File.ReadAllLines(Constant.MethodInfoTxt);
-            var functionlist = new Dictionary<string, string>();
-
-            /** 这个没用了，直接c#解析svndiff文件
-            //var funcstr = File.ReadAllText(@"./func.json");
-            //var serializer = new JavaScriptSerializer();
-            //var changelist = serializer.Deserialize<Dictionary<string, List<int>>>(funcstr);
             */
 
-            var changelist = HandleSvnDiffFile(Constant.SvnDiffTxt);
+            // step1 通过VS工程获取函数行数
+            MethodAndLine line = new MethodAndLine();
+            line.GetMethodInfoFromSolution(pathtosolution);
+            if (File.Exists(Constant.MethodInfoTxt))
+            {
+                File.Delete(Constant.MethodInfoTxt);
+            }
+            File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
+
+            // step2 变更行查函数名
+            var functionlist = GetChangedFunctionName(Constant.SvnDiffTxt, Constant.MethodInfoTxt);
+
+            // step3: 变更函数查相关引用
+            foreach (var function in functionlist.Keys)
+            {
+                Console.WriteLine("变更的函数名：" + function/*.Key + " " + function.Value*/);
+                Console.WriteLine(SearchMethodsForTextParallel(pathtosolution, function));
+            }
+            
+            
+            ///////////////////////////////////////////
+            //FindAllReferences(pathtosolution, projectname, fullClassName, methodName);
+
+            // 测试引用的函数
+            /**
+            string sb = SearchMethodsForTextParallel(pathtosolution, methodName);
+            Console.WriteLine(sb);
+            */
+
+            //st.Stop();
+            //Console.WriteLine("Total time:" + st.ElapsedMilliseconds);
+        }
+
+
+        private static Dictionary<string, string> GetChangedFunctionName(string svndifftxt, string methodinfotxt)
+        {
+            var lines = File.ReadAllLines(methodinfotxt);
+            var functionlist = new Dictionary<string, string>();
+
+            var changelist = HandleSvnDiffFile(svndifftxt);
             foreach (var change in changelist)
             {
                 foreach (var line in lines)
@@ -91,27 +115,7 @@ namespace FindReference
                     }
                 }
             }
-
-            // step3: 变更函数查相关引用
-            foreach (var function in functionlist.Keys)
-            {
-                Console.WriteLine("变更的函数名：" + function);
-                //Console.WriteLine( SearchMethodsForTextParallel(pathtosolution, function));
-            }
-            
-            
-            
-
-            ///////////////////////////////////////////
-            //FindAllReferences(pathtosolution, projectname, fullClassName, methodName);
-
-            // 测试引用的函数
-            /**
-            string sb = SearchMethodsForTextParallel(pathtosolution, methodName);
-            Console.WriteLine(sb);
-            */
-            st.Stop();
-            Console.WriteLine("Total time:" + st.ElapsedMilliseconds);
+            return functionlist;
         }
 
         #region 查找函数引用
@@ -161,7 +165,7 @@ namespace FindReference
 
         private static void PrintUsage()
         {
-            Console.WriteLine(@"Usage: FindReference " +  @"pathtosolution " + @"projectname " + @"FullClassName " + @"MethodName");
+            Console.WriteLine(@"Usage: FindReference " +  @"pathtosolution");
         }
 
         public static string SearchMethodsForTextParallel(string path, string textToSearch)
@@ -226,6 +230,11 @@ namespace FindReference
             return sb.ToString();
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="filename">svn diff file</param>
+        /// <returns>{"Assets/Scripts/ssGameWorld.cs", [1, 20...]}</returns>
         private static Dictionary<string, List<int>> HandleSvnDiffFile(string filename)
         {
             Dictionary<string, List<int>> result = new Dictionary<string, List<int>>();
