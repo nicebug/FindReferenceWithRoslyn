@@ -27,21 +27,20 @@ namespace FindReference
                 return;
             }
 
-            var pathtosolution = args[0];
+            //var pathtosolution = args[0];
             //var projectname = args[1];
             //var fullClassName = args[2];
             //var methodName = args[3];
 
-            //Stopwatch st = new Stopwatch();
-            //st.Start();
-            /**
+            Stopwatch st = new Stopwatch();
+            st.Start();
             var pathtosolution = @"xxx\UnityVS.UnityProj.sln";
             //var pathtosolution = @"..\..\..\FindReferenceWithRoslyn.sln";
             var projectname = @"FindRef";
             var fullClassName = @"CSharpParse.FindRef.Program";
-            //var methodName = @"FindAllReferencesWithSolution";
-            var methodName = @"FindAllReferences";
-            */
+            var methodName = @"FindAllReferencesWithSolution";
+            //var methodName = @"FindAllReferences";
+
 
             // step1 通过VS工程获取函数行数
             MethodAndLine line = new MethodAndLine();
@@ -50,19 +49,22 @@ namespace FindReference
             {
                 File.Delete(Constant.MethodInfoTxt);
             }
+            // 将函数的起始行写入methodinfo.txt
+            // eg: Awake,23,43,E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\Assets\Plugins\BuglyInit.cs
             File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
 
             // step2 变更行查函数名
+            // eg: {"Awake": "Assets\Scripts\ClassicalPVP\cpClassicalPvpInfo.cs"...}
             var functionlist = GetChangedFunctionName(Constant.SvnDiffTxt, Constant.MethodInfoTxt);
 
             // step3: 变更函数查相关引用
-            foreach (var function in functionlist.Keys)
+            foreach (var function in functionlist/*.Keys*/)
             {
-                Console.WriteLine("变更的函数名：" + function/*.Key + " " + function.Value*/);
+                Console.WriteLine("变更的函数名：" + function.Key + " " + function.Value);
                 Console.WriteLine(SearchMethodsForTextParallel(pathtosolution, function));
             }
-            
-            
+
+
             ///////////////////////////////////////////
             //FindAllReferences(pathtosolution, projectname, fullClassName, methodName);
 
@@ -72,8 +74,8 @@ namespace FindReference
             Console.WriteLine(sb);
             */
 
-            //st.Stop();
-            //Console.WriteLine("Total time:" + st.ElapsedMilliseconds);
+            st.Stop();
+            Console.WriteLine("Total time:" + st.ElapsedMilliseconds);
         }
 
 
@@ -161,6 +163,50 @@ namespace FindReference
                 
             }
         }
+
+
+        private static void FindAllReferences(string pathtosolution, string fullClassName, string methodName)
+        {
+            MSBuildWorkspace workspace = MSBuildWorkspace.Create();
+            Solution solution = workspace.OpenSolutionAsync(pathtosolution).Result;
+            if (solution == null)
+            {
+                Console.WriteLine("no solution: " + pathtosolution);
+                return;
+            }
+
+            Project project = solution.Projects.Single();
+            if (project == null)
+            {
+                Console.WriteLine("no project: " );
+                return;
+            }
+
+            // 以下都是为了IMethodSymbol，便于使用SymbolFinder.FindReferencesAsync
+            Compilation compilation = project.GetCompilationAsync().Result;
+            INamedTypeSymbol classToAnalyze = compilation.GetTypeByMetadataName(fullClassName);
+            if (classToAnalyze == null)
+            {
+                Console.WriteLine("no fullclass name : " + fullClassName);
+                return;
+            }
+            IMethodSymbol methodSymbol = classToAnalyze.GetMembers(methodName).FirstOrDefault() as IMethodSymbol;
+            if (methodSymbol == null)
+            {
+                return;
+            }
+            var results = SymbolFinder.FindReferencesAsync(methodSymbol, solution).Result.ToList();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result.Definition);
+                foreach (var num in result.Locations)
+                {
+                    Console.WriteLine(/*num.Location.SourceTree.GetLineSpan(num.Location.SourceSpan) + */ num.Location.GetLineSpan().ToString());
+                }
+
+            }
+        }
         #endregion
 
         private static void PrintUsage()
@@ -168,12 +214,13 @@ namespace FindReference
             Console.WriteLine(@"Usage: FindReference " +  @"pathtosolution");
         }
 
-        public static string SearchMethodsForTextParallel(string path, string textToSearch)
+        public static string SearchMethodsForTextParallel(string path, KeyValuePair<string, string> function)
         {
             StringBuilder result = new StringBuilder();
             string language = "";
             MSBuildWorkspace workspace = MSBuildWorkspace.Create();
             Solution solution = workspace.OpenSolutionAsync(path).Result;
+            var symbollist = new List<ISymbol>();
             foreach (Project project in solution.Projects)
             {
                 language = project.Language;
@@ -181,9 +228,26 @@ namespace FindReference
                 {
                     if (language == "C#")
                     {
-                        result.Append(SearchMethodsForTextCSharp(document, textToSearch));
+                        //result.Append(SearchMethodsForTextCSharp(document, textToSearch));
+                        //symbollist.AddRange(SearchMethodSymbolForTextCSharp(document, textToSearch));
+                        symbollist.AddRange(SearchMethodSymbolFromDocument(document, function));
                     }
                 });
+            }
+
+            foreach (var symbol in symbollist)
+            {
+                var results = SymbolFinder.FindReferencesAsync(symbol, solution).Result;
+                foreach (var _result in results)
+                {
+                    Console.WriteLine(_result.Definition);
+                    foreach (var num in _result.Locations)
+                    {
+                        Console.WriteLine(/*num.Location.SourceTree.GetLineSpan(num.Location.SourceSpan) + */ num.Location.GetLineSpan().ToString());
+                        var tmp = num.Location.GetMappedLineSpan().StartLinePosition;
+                        Console.WriteLine(tmp);
+                    }
+                }
             }
             return result.ToString();
         }
@@ -196,6 +260,7 @@ namespace FindReference
             var syntaxNodes = from methodDeclaration in root.DescendantNodes()
                               .Where(x => x is MethodDeclarationSyntax || x is PropertyDeclarationSyntax)
                               select methodDeclaration;
+
             if (syntaxNodes != null && syntaxNodes.Count() > 0)
             {
                 foreach (MemberDeclarationSyntax method in syntaxNodes)
@@ -213,6 +278,62 @@ namespace FindReference
             return sb.ToString();
         }
 
+        private static List<ISymbol> SearchMethodSymbolForTextCSharp(Document document, string textToSearch)
+        {
+            List<ISymbol> _symbollist = new List<ISymbol>();
+            SyntaxTree syntax = document.GetSyntaxTreeAsync().Result;
+
+          
+
+             var root = (CompilationUnitSyntax)syntax.GetRoot();
+            var syntaxNodes = from methodDeclaration in root.DescendantNodes()
+                              .Where(x => x is MethodDeclarationSyntax /*|| x is PropertyDeclarationSyntax*/)
+                              select methodDeclaration;
+
+            if (syntaxNodes != null && syntaxNodes.Count() > 0)
+            {
+                foreach (MemberDeclarationSyntax method in syntaxNodes)
+                {
+                    if (method is MethodDeclarationSyntax)
+                    {
+                        var _methodname = ((MethodDeclarationSyntax)method).Identifier.ValueText;
+                        if (_methodname.ToUpper().Contains(textToSearch.ToUpper()))
+                        {
+                            var methodSymbol = document.GetSemanticModelAsync().Result.GetDeclaredSymbol(method);
+                            _symbollist.Add(methodSymbol);
+                        }
+                    }
+                }
+            }
+            return _symbollist;
+        }
+
+        private static List<IMethodSymbol> SearchMethodSymbolFromDocument(Document document, KeyValuePair<string, string> function)
+        {
+            List<IMethodSymbol> _symbollist = new List<IMethodSymbol>();
+
+            var methodDeclarationList = document.GetSyntaxRootAsync().Result.DescendantNodes().OfType<MethodDeclarationSyntax>()
+              .Where(x => (x.Identifier.ValueText == function.Key && x.GetLocation().SourceTree.FilePath.Contains(function.Value)));
+            if (methodDeclarationList != null && methodDeclarationList.Count() > 0)
+            {
+                //var method = methodDeclarationList.GetEnumerator();
+                //while (method.MoveNext())
+                //{
+                //    var _name = method.Current;
+                //    var _methodSymbol = document.GetSemanticModelAsync().Result.GetDeclaredSymbol(_name);
+                //    _symbollist.Add(_methodSymbol);
+                //}
+                foreach (var method in methodDeclarationList)
+                {
+                    //method.GetLocation().SourceTree.FilePath;
+                    var _methodSymbol = document.GetSemanticModelAsync().Result.GetDeclaredSymbol(method);
+                    _symbollist.Add(_methodSymbol);
+                }
+            }
+
+            return _symbollist;
+        }
+
         private static string GetMehotdOrPropertyTextCSharp(SyntaxNode node, Document document)
         {
             StringBuilder sb = new StringBuilder();
@@ -222,6 +343,7 @@ namespace FindReference
             string methodOrPropertyDefinition = isMethod ? "Method: " : "Property: ";
             object methodName = isMethod ? ((MethodDeclarationSyntax)node).Identifier.Value :
                 ((PropertyDeclarationSyntax)node).Identifier.Value;
+
             sb.AppendLine("//=================================" + num);
             sb.AppendLine(document.FilePath);
             sb.AppendLine(methodOrPropertyDefinition + (string)methodName);
@@ -266,6 +388,38 @@ namespace FindReference
                 }
             }
             return result;
+        }
+    }
+
+
+    static class SyntaxNodeHelper
+    {
+        public static bool TryGetParentSyntax<T>(SyntaxNode syntaxNode, out T result) where T :SyntaxNode
+        {
+            result = null;
+            if (syntaxNode == null)
+            {
+                return false;
+            }
+            try
+            {
+                syntaxNode = syntaxNode.Parent;
+                if (syntaxNode == null)
+                {
+                    return false;
+                }
+
+                if (syntaxNode.GetType() == typeof(T))
+                {
+                    result = syntaxNode as T;
+                    return true;
+                }
+                return TryGetParentSyntax<T>(syntaxNode, out result);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
