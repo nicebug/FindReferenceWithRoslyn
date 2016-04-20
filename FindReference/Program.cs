@@ -50,7 +50,7 @@ namespace FindReference
                 File.Delete(Constant.MethodInfoTxt);
             }
             // 将函数的起始行写入methodinfo.txt
-            // eg: Awake,23,43,E:\DailyWork\WeSpeed\Code\PreDistribution\Client\UnityProj\Assets\Plugins\BuglyInit.cs
+            // eg: Awake,23,43,E:\xxxx\Client\UnityProj\Assets\Plugins\XXXXX.cs
             File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
 
             // step2 变更行查函数名
