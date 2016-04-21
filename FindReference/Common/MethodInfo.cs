@@ -6,14 +6,23 @@ using System.Threading.Tasks;
 
 namespace FindReference.Common
 {
-    public struct MethodS
+    public class MethodInfoPack
     {
-        public string MethodName;
-        public string MethodLine;
-        public MethodS(string MethodName, string MethodLine)
+        //Equals,23,28,E:xxx\BinaryDeserialization.cs
+        public string MethodName { get; set; }
+        public int StartLine { get; set; }
+        public int EndLine { get; set; }
+        public string FilePath { get; set; }
+        public MethodInfoPack(string MethodName, int StartLine, int EndLine, string FilePath)
         {
             this.MethodName = MethodName;
-            this.MethodLine = MethodLine;
+            this.StartLine = StartLine;
+            this.EndLine = EndLine;
+            this.FilePath = FilePath;
+        }
+        public MethodInfoPack()
+        {
+
         }
     }
     class MethodInfo

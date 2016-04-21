@@ -44,24 +44,29 @@ namespace FindReference
 
             // step1 通过VS工程获取函数行数
             MethodAndLine line = new MethodAndLine();
-            line.GetMethodInfoFromSolution(pathtosolution);
-            if (File.Exists(Constant.MethodInfoTxt))
-            {
-                File.Delete(Constant.MethodInfoTxt);
-            }
-            // 将函数的起始行写入methodinfo.txt
-            // eg: Awake,23,43,E:\xxxx\Client\UnityProj\Assets\Plugins\XXXXX.cs
-            File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
+            //line.GetMethodInfoFromSolution(pathtosolution);
+            var methodPack = line.GetMethodInfoPackFromSolution(pathtosolution);
+            // 存在列表中有空的情况，清除null
+            methodPack.RemoveAll(item => item == null);
+            //if (File.Exists(Constant.MethodInfoTxt))
+            //{
+            //    File.Delete(Constant.MethodInfoTxt);
+            //}
+            //// 将函数的起始行写入methodinfo.txt
+            //// eg: Awake,23,43,E:\xxxx\Client\UnityProj\Assets\Plugins\XXXXX.cs
+            //File.AppendAllText(Constant.MethodInfoTxt, line.HandleMethodInfoFromFile("./tmp.txt"), Encoding.UTF8);
 
             // step2 变更行查函数名
             // eg: {"Awake": "Assets\Scripts\ClassicalPVP\cpClassicalPvpInfo.cs"...}
-            var functionlist = GetChangedFunctionName(Constant.SvnDiffTxt, Constant.MethodInfoTxt);
+            //var functionlist = GetChangedFunctionName(Constant.SvnDiffTxt, Constant.MethodInfoTxt);
+
+            var functionlist = GetChangedFunctionName(Constant.SvnDiffTxt, methodPack);
 
             // step3: 变更函数查相关引用
             foreach (var function in functionlist/*.Keys*/)
             {
                 Console.WriteLine("变更的函数名：" + function.Key + " " + function.Value);
-                Console.WriteLine(SearchMethodsForTextParallel(pathtosolution, function));
+                Console.WriteLine(SearchMethodsForTextParallel(pathtosolution, function, methodPack));
             }
 
 
@@ -77,6 +82,7 @@ namespace FindReference
             st.Stop();
             Console.WriteLine("Total time:" + st.ElapsedMilliseconds);
         }
+
 
 
         private static Dictionary<string, string> GetChangedFunctionName(string svndifftxt, string methodinfotxt)
@@ -119,7 +125,38 @@ namespace FindReference
             }
             return functionlist;
         }
+        private static Dictionary<string, string> GetChangedFunctionName(string svndifftxt, List<MethodInfoPack> methodsPack)
+        {
+            var referenceDict = new Dictionary<string, string>();
+            var svnlist = HandleSvnDiffFile(svndifftxt);
 
+            foreach (var svn in svnlist)
+            {
+                foreach (var method in methodsPack)
+                {
+                    if (method.FilePath.IndexOf(svn.Key, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        foreach (var num in svn.Value)
+                        {
+                            if (method.StartLine <= num && num <= method.EndLine)
+                            {
+                                if (referenceDict.ContainsValue(method.MethodName) && referenceDict.ContainsValue(method.FilePath))
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    referenceDict[method.MethodName] = method.FilePath;
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+
+            return referenceDict;
+        }
         #region 查找函数引用
         private static void FindAllReferences(string pathtosolution, string projectname, string fullClassName, string methodName)
         {
@@ -214,7 +251,7 @@ namespace FindReference
             Console.WriteLine(@"Usage: FindReference " +  @"pathtosolution");
         }
 
-        public static string SearchMethodsForTextParallel(string path, KeyValuePair<string, string> function)
+        public static string SearchMethodsForTextParallel(string path, KeyValuePair<string, string> function, List<MethodInfoPack> methodPack)
         {
             StringBuilder result = new StringBuilder();
             string language = "";
@@ -241,11 +278,24 @@ namespace FindReference
                 foreach (var _result in results)
                 {
                     Console.WriteLine(_result.Definition);
+                    Console.WriteLine("------------相关引用--------------");
+                    //Console.WriteLine( ((IMethodSymbol)_result).Name);
                     foreach (var num in _result.Locations)
                     {
+                        int start = num.Location.GetMappedLineSpan().StartLinePosition.Line + 1;
+                        int end = num.Location.GetMappedLineSpan().EndLinePosition.Line + 1;
+                        string _path = num.Document.FilePath;
+                        foreach (var method in methodPack)
+                        {
+                            if (_path.Equals(method.FilePath))
+                            {
+                                if (start >= method.StartLine && end <= method.EndLine)
+                                {
+                                    Console.WriteLine(method.MethodName);
+                                }
+                            }
+                        }
                         Console.WriteLine(/*num.Location.SourceTree.GetLineSpan(num.Location.SourceSpan) + */ num.Location.GetLineSpan().ToString());
-                        var tmp = num.Location.GetMappedLineSpan().StartLinePosition;
-                        Console.WriteLine(tmp);
                     }
                 }
             }
@@ -311,7 +361,7 @@ namespace FindReference
         private static List<IMethodSymbol> SearchMethodSymbolFromDocument(Document document, KeyValuePair<string, string> function)
         {
             List<IMethodSymbol> _symbollist = new List<IMethodSymbol>();
-
+            // 函数名与文件名均相同才添加
             var methodDeclarationList = document.GetSyntaxRootAsync().Result.DescendantNodes().OfType<MethodDeclarationSyntax>()
               .Where(x => (x.Identifier.ValueText == function.Key && x.GetLocation().SourceTree.FilePath.Contains(function.Value)));
             if (methodDeclarationList != null && methodDeclarationList.Count() > 0)
@@ -325,7 +375,6 @@ namespace FindReference
                 //}
                 foreach (var method in methodDeclarationList)
                 {
-                    //method.GetLocation().SourceTree.FilePath;
                     var _methodSymbol = document.GetSemanticModelAsync().Result.GetDeclaredSymbol(method);
                     _symbollist.Add(_methodSymbol);
                 }
@@ -373,7 +422,7 @@ namespace FindReference
                 {
                     if (line.StartsWith(@"+++"))
                     {
-                        key = line.Split()[1].Trim();
+                        key = line.Split()[1].Trim().Replace(@"/", @"\");
                         if (!result.ContainsKey(key))
                         {
                             result[key] = new List<int>();
