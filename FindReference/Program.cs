@@ -27,14 +27,14 @@ namespace FindReference
                 return;
             }
 
-            //var pathtosolution = args[0];
+            var pathtosolution = args[0];
             //var projectname = args[1];
             //var fullClassName = args[2];
             //var methodName = args[3];
 
             Stopwatch st = new Stopwatch();
             st.Start();
-            var pathtosolution = @"xxx\UnityVS.UnityProj.sln";
+            //var pathtosolution = @"xxx\UnityVS.UnityProj.sln";
             //var pathtosolution = @"..\..\..\FindReferenceWithRoslyn.sln";
             var projectname = @"FindRef";
             var fullClassName = @"CSharpParse.FindRef.Program";
