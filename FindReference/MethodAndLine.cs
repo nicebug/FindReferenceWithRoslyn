@@ -31,7 +31,6 @@ namespace FindReference
             List<string> result = new List<string>();
             List<object> info = new List<object>();
 
-            string language = "";
             MSBuildWorkspace workspace = MSBuildWorkspace.Create();
             
             Solution solution = workspace.OpenSolutionAsync(pathToSoluton).Result;
@@ -39,16 +38,16 @@ namespace FindReference
             {
                 return ;
             }
-            foreach (Project project in solution.Projects)
+            foreach (var project in solution.Projects)
             {
-                language = project.Language;
+                var language = project.Language;
                 Parallel.ForEach(project.Documents, document =>
                 {
                     if (language == "C#")
                     {
                         //var infolist = GetMethodInfoListFromDocument(document);
                         var infolist = GetMethodInfoFromDocument(document);
-                        if (infolist != null && infolist != ""/*infolist.Count > 0*/)
+                        if (!string.IsNullOrEmpty(infolist)/*infolist.Count > 0*/)
                         {
                             //info.Add(infolist);
                             result.Add(infolist);
@@ -65,37 +64,42 @@ namespace FindReference
             File.AppendAllLines(folder, result, Encoding.UTF8);
         }
 
-        public List<MethodInfoPack> GetMethodInfoPackFromSolution(string pathToSoluton)
+        public List<MethodInfoPack> GetMethodInfoPackFromSolution(Solution solution, List<Document> documents )
         {
             List<MethodInfoPack> methodPack = new List<MethodInfoPack>();
             var tmpPack = new List<MethodInfoPack>();
-            string language = "";
-            MSBuildWorkspace workspace = MSBuildWorkspace.Create();
+            //MSBuildWorkspace workspace = MSBuildWorkspace.Create();
 
-            Solution solution = workspace.OpenSolutionAsync(pathToSoluton).Result;
+            //Solution solution = workspace.OpenSolutionAsync(pathToSoluton).Result;
             if (solution == null)
             {
                 return null;
             }
-            foreach (Project project in solution.Projects)
+            //foreach (var project in solution.Projects)
+            //{
+            //    var language = project.Language;
+            //    Parallel.ForEach(project.Documents, document =>
+            //    {
+            //        if (language != "C#") return;
+            //        tmpPack = GetMethodInfoPackFromDocument(document);
+            //        if (tmpPack != null && tmpPack.Count > 0)
+            //        {
+            //            methodPack.AddRange(tmpPack);
+            //        }
+            //    });
+            //}
+            foreach (var document in documents)
             {
-                language = project.Language;
-                Parallel.ForEach(project.Documents, document =>
+                tmpPack = GetMethodInfoPackFromDocument(document);
+                if (tmpPack.Any())
                 {
-                    if (language == "C#")
-                    {
-                        tmpPack = GetMethodInfoPackFromDocument(document);
-                        if (tmpPack != null && tmpPack.Count > 0)
-                        {
-                            methodPack.AddRange(tmpPack);
-                        }
-                    }
-                });
+                    methodPack.AddRange(tmpPack);
+                }
             }
             return methodPack;
         }
 
-        private string GetMethodInfoFromDocument(Document document)
+        private static string GetMethodInfoFromDocument(Document document)
         {
             StringBuilder sb = new StringBuilder();
             //sb.AppendLine(document.FilePath.ToString().Trim());
@@ -105,22 +109,20 @@ namespace FindReference
             var syntaxNodes = from methodDeclaration in root.DescendantNodes()
                               .Where(x => x is MethodDeclarationSyntax)
                               select methodDeclaration;
-            if (syntaxNodes != null && syntaxNodes.Count() > 0)
+            if (!syntaxNodes.Any()) return Regex.Replace(sb.ToString(), @" ", "");
+            foreach (MethodDeclarationSyntax method in syntaxNodes)
             {
-                foreach (MethodDeclarationSyntax method in syntaxNodes)
-                {
-                    //info.Add(new MethodInfo
-                    //{
-                    //    DocName = document.Name,
-                    //    FilePath = document.FilePath,
-                    //    //MethodNameAndList = new Method(method.Identifier.ToString(), method.GetLocation().GetLineSpan().Span.ToString())
-                    //    MethodName = method.Identifier.ToString(),
-                    //    LineNum = method.GetLocation().GetLineSpan().Span.ToString()
-                    //});
-                    //sb.AppendLine("//==========================");
-                    sb.AppendLine(method.Identifier.Value.ToString().Trim() + "," + method.GetLocation().GetLineSpan().Span.ToString().Trim() + "," + document.FilePath);
-                    //sb.AppendLine(method.GetLocation().GetLineSpan().Span.ToString());
-                }
+                //info.Add(new MethodInfo
+                //{
+                //    DocName = document.Name,
+                //    FilePath = document.FilePath,
+                //    //MethodNameAndList = new Method(method.Identifier.ToString(), method.GetLocation().GetLineSpan().Span.ToString())
+                //    MethodName = method.Identifier.ToString(),
+                //    LineNum = method.GetLocation().GetLineSpan().Span.ToString()
+                //});
+                //sb.AppendLine("//==========================");
+                sb.AppendLine(method.Identifier.Value.ToString().Trim() + "," + method.GetLocation().GetLineSpan().Span.ToString().Trim() + "," + document.FilePath);
+                //sb.AppendLine(method.GetLocation().GetLineSpan().Span.ToString());
             }
             //string result = info.ToJSON();
 
@@ -129,37 +131,20 @@ namespace FindReference
         }
 
         //document中函数所有信息（函数名，开始行，结束行，完整文件路径）存入list中
-        private List<MethodInfoPack> GetMethodInfoPackFromDocument(Document document)
+        private static List<MethodInfoPack> GetMethodInfoPackFromDocument(Document document)
         {
             List<MethodInfoPack> methods = new List<MethodInfoPack>();
-            int startline;
-            int endline;
-            var tmpPack = new MethodInfoPack();
 
             var root = (CompilationUnitSyntax)document.GetSyntaxRootAsync().Result;
             var syntaxNodes = from methodDeclaration in root.DescendantNodes()
                               .Where(x => x is MethodDeclarationSyntax)
                               select methodDeclaration;
-            if (syntaxNodes != null && syntaxNodes.Count() > 0)
-            {
-                foreach (MethodDeclarationSyntax method in syntaxNodes)
-                {
-                    startline = method.GetLocation().GetMappedLineSpan().StartLinePosition.Line + 1;
-                    endline = method.GetLocation().GetMappedLineSpan().EndLinePosition.Line + 1;
-                    //tmpPack = new MethodInfoPack
-                    //{
-                    //    MethodName = method.Identifier.ToString(),
-                    //    StartLine = startline,
-                    //    EndLine = endline,
-                    //    FilePath = document.FilePath
-                    //};
-                    tmpPack = new MethodInfoPack(method.Identifier.ToString(), startline, endline, document.FilePath);
-                    if (tmpPack != null)
-                    {
-                        methods.Add(tmpPack);
-                    }
-                }
-            }
+            if (!syntaxNodes.Any()) return methods;
+            methods.AddRange(
+                from MethodDeclarationSyntax method in syntaxNodes
+                let startline = method.GetLocation().GetMappedLineSpan().StartLinePosition.Line + 1
+                let endline = method.GetLocation().GetMappedLineSpan().EndLinePosition.Line + 1
+                select new MethodInfoPack(method.Identifier.ToString(), startline, endline, document.FilePath));
             return methods;
         }
 
@@ -170,20 +155,17 @@ namespace FindReference
             var syntaxNodes = from methodDeclaration in root.DescendantNodes()
                               .Where(x => x is MethodDeclarationSyntax)
                               select methodDeclaration;
-            if (syntaxNodes != null && syntaxNodes.Count() > 0)
+            var enumerable = syntaxNodes as IList<SyntaxNode> ?? syntaxNodes.ToList();
+            if (/*syntaxNodes != null && */enumerable.Any())
             {
-                foreach (MethodDeclarationSyntax method in syntaxNodes)
-                {
-                    info.Add(new MethodInfo
+                info.AddRange(from MethodDeclarationSyntax method in enumerable
+                    select new MethodInfo
                     {
-                        DocName = document.Name,
-                        FilePath = document.FilePath,
+                        DocName = document.Name, FilePath = document.FilePath,
 
                         //MethodNameAndList = new MethodS(method.Identifier.ToString(), method.GetLocation().GetLineSpan().Span.ToString())
-                        MethodName = method.Identifier.ToString(),
-                        LineNum = method.GetLocation().GetLineSpan().Span.ToString()
+                        MethodName = method.Identifier.ToString(), LineNum = method.GetLocation().GetLineSpan().Span.ToString()
                     });
-                }
             }
             return info;
         }
