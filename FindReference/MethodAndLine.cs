@@ -28,12 +28,12 @@ namespace FindReference
         {
             string folder = "./tmp.txt";
             //StringBuilder result = new StringBuilder();
-            List<string> result = new List<string>();
-            List<object> info = new List<object>();
+            var result = new List<string>();
+            var info = new List<object>();
 
-            MSBuildWorkspace workspace = MSBuildWorkspace.Create();
+            var workspace = MSBuildWorkspace.Create();
             
-            Solution solution = workspace.OpenSolutionAsync(pathToSoluton).Result;
+            var solution = workspace.OpenSolutionAsync(pathToSoluton).Result;
             if (solution == null)
             {
                 return ;
@@ -67,7 +67,6 @@ namespace FindReference
         public List<MethodInfoPack> GetMethodInfoPackFromSolution(Solution solution, List<Document> documents )
         {
             List<MethodInfoPack> methodPack = new List<MethodInfoPack>();
-            var tmpPack = new List<MethodInfoPack>();
             //MSBuildWorkspace workspace = MSBuildWorkspace.Create();
 
             //Solution solution = workspace.OpenSolutionAsync(pathToSoluton).Result;
@@ -88,13 +87,9 @@ namespace FindReference
             //        }
             //    });
             //}
-            foreach (var document in documents)
+            foreach (var tmpPack in documents.Select(GetMethodInfoPackFromDocument).Where(tmpPack => tmpPack.Any()))
             {
-                tmpPack = GetMethodInfoPackFromDocument(document);
-                if (tmpPack.Any())
-                {
-                    methodPack.AddRange(tmpPack);
-                }
+                methodPack.AddRange(tmpPack);
             }
             return methodPack;
         }
@@ -184,7 +179,7 @@ namespace FindReference
             }
 
             
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             var lines = File.ReadAllLines(filepath);
             foreach (var line in lines)
             {
