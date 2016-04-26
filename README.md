@@ -1,6 +1,6 @@
-# FindReferenceWithRoslyn
-## ¹¤×÷Ô­Àí
-1. svn diff -r xxx:yyy Éú³ÉÁ½¸ö°æ±¾µÄ²îÒìÎÄ¼ş£¬svndiff.txt
-2. command line¸ù¾İslnÉú³Éº¯ÊıĞÅÏ¢
-3. ¹ØÁªsvndiff.txtºÍ²½Öè2²úÉúµÄº¯ÊıĞÅÏ¢²é³ö±ä¸üµÄº¯ÊıÃûºÍÎÄ¼şÃû
-4. ¸ù¾İ²½Öè3µÄ½á¹û²éÑ¯±ä¸üº¯ÊıµÄÏà¹ØÒıÓÃ
+# FindReferenceWithRoslyn[![Build Status](https://travis-ci.org/nicebug/FindReferenceWithRoslyn.svg?branch=master)](https://travis-ci.org/nicebug/FindReferenceWithRoslyn)
+## å·¥ä½œåŸç†
+1. svn diff -r xxx:yyy ç”Ÿæˆä¸¤ä¸ªç‰ˆæœ¬çš„å·®å¼‚æ–‡ä»¶ï¼Œsvndiff.txt
+2. command lineæ ¹æ®slnç”Ÿæˆå‡½æ•°ä¿¡æ¯
+3. å…³è”svndiff.txtå’Œæ­¥éª¤2äº§ç”Ÿçš„å‡½æ•°ä¿¡æ¯æŸ¥å‡ºå˜æ›´çš„å‡½æ•°åå’Œæ–‡ä»¶å
+4. æ ¹æ®æ­¥éª¤3çš„ç»“æœæŸ¥è¯¢å˜æ›´å‡½æ•°çš„ç›¸å…³å¼•ç”¨
