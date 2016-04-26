@@ -1,4 +1,8 @@
-# FindReferenceWithRoslyn[![Build Status](https://travis-ci.org/nicebug/FindReferenceWithRoslyn.svg?branch=master)](https://travis-ci.org/nicebug/FindReferenceWithRoslyn)
+# FindReferenceWithRoslyn
+[![Build Status](https://travis-ci.org/nicebug/FindReferenceWithRoslyn.svg?branch=master)](https://travis-ci.org/nicebug/FindReferenceWithRoslyn)
+
+与VS的Findreference功能类似，查询相关函数引用
+
 ## 工作原理
 1. svn diff -r xxx:yyy 生成两个版本的差异文件，svndiff.txt
 2. command line根据sln生成函数信息
