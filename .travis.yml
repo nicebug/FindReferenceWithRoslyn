@@ -5,6 +5,5 @@ before_install:
   - wget -O .nuget/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
   - mono .nuget/nuget.exe # Output NuGet's version number
 install:
-  - nuget # lets get version number
-  - nuget restore FindReferenceWithRoslyn.sln -Verbosity detailed
-  - nuget update FindReferenceWithRoslyn.sln -Verbosity detailed
+  - mono .nuget/nuget.exe restore FindReferenceWithRoslyn.sln -Verbosity detailed
+  - mono .nuget/nuget.exe update FindReferenceWithRoslyn.sln -Verbosity detailed
